@@ -1,0 +1,73 @@
+<!-- dashboard.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background-color: #f7f9fc;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background-color: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      background-color: #ff5252;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #e84141;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to Your Dashboard!</h1>
+    <p>You are successfully logged in.</p>
+    <button onclick="logOut()">Log Out</button>
+  </div>
+
+  <!-- Firebase + Logout Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAOybEgXfQX_tJx5dqg_OGzcrPcGBKq2gg",
+      authDomain: "p2p-student-platform.firebaseapp.com",
+      projectId: "p2p-student-platform",
+      storageBucket: "p2p-student-platform.appspot.com",
+      messagingSenderId: "23452791627",
+      appId: "1:23452791627:web:de87fcbd0ba47949b9aece"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    window.logOut = async function () {
+      try {
+        await signOut(auth);
+        alert("Logged out successfully.");
+        window.location.href = "auth.html";
+      } catch (error) {
+        alert("Logout failed: " + error.message);
+      }
+    };
+  </script>
+</body>
+</html>
