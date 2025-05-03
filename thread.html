@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Thread View - Stratizen Forum</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script type="module" src="/firebase.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      padding: 2rem;
+      background: #fafafa;
+    }
+
+    .thread-container {
+      max-width: 800px;
+      margin: auto;
+    }
+
+    .thread-header {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .thread-header h2 {
+      margin-top: 0;
+    }
+
+    .replies {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .reply {
+      background: white;
+      border-radius: 6px;
+      padding: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    .reply small {
+      color: #777;
+    }
+
+    .reply-box {
+      margin-top: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .reply-box textarea {
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .reply-box button {
+      align-self: flex-start;
+      padding: 0.5rem 1rem;
+      background: #111;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .reply-box button:hover {
+      background: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="thread-container">
+    <div class="thread-header">
+      <h2 id="thread-title">Loading...</h2>
+      <p id="thread-content"></p>
+      <small id="thread-meta"></small>
+    </div>
+
+    <div class="replies" id="replies">
+      <!-- Replies will go here -->
+    </div>
+
+    <div class="reply-box">
+      <textarea id="reply-input" rows="4" placeholder="Write a reply..."></textarea>
+      <button id="post-reply">Post Reply</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './firebase.js';
+    import {
+      doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp
+    } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const threadId = urlParams.get('id');
+
+    const titleEl = document.getElementById('thread-title');
+    const contentEl = document.getElementById('thread-content');
+    const metaEl = document.getElementById('thread-meta');
+    const repliesEl = document.getElementById('replies');
+    const replyInput = document.getElementById('reply-input');
+    const postBtn = document.getElementById('post-reply');
+
+    let currentUser;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "login.html";
+      } else {
+        currentUser = user;
+        await loadThread();
+        listenForReplies();
+      }
+    });
+
+    async function loadThread() {
+      const docRef = doc(db, "forumThreads", threadId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        titleEl.textContent = "Thread not found";
+        return;
+      }
+
+      const data = docSnap.data();
+      titleEl.textContent = data.title;
+      contentEl.textContent = data.content;
+      metaEl.textContent = `Posted by ${data.authorName || 'Anon'} at ${data.createdAt?.toDate().toLocaleString() || 'just now'}`;
+    }
+
+    postBtn.addEventListener('click', async () => {
+      const text = replyInput.value.trim();
+      if (!text) return alert("Reply cannot be empty");
+
+      try {
+        await addDoc(collection(db, "forumThreads", threadId, "replies"), {
+          text,
+          authorId: currentUser.uid,
+          authorName: currentUser.displayName || "Anonymous",
+          createdAt: serverTimestamp(),
+        });
+
+        replyInput.value = '';
+      } catch (err) {
+        alert("Error posting reply: " + err.message);
+      }
+    });
+
+    function listenForReplies() {
+      const q = query(collection(db, "forumThreads", threadId, "replies"), orderBy("createdAt", "asc"));
+      onSnapshot(q, (snapshot) => {
+        repliesEl.innerHTML = '';
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const replyDiv = document.createElement('div');
+          replyDiv.classList.add('reply');
+          replyDiv.innerHTML = `
+            <p>${data.text}</p>
+            <small>by ${data.authorName || 'Anon'} at ${data.createdAt?.toDate().toLocaleString() || 'just now'}</small>
+          `;
+          repliesEl.appendChild(replyDiv);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Marketplace - Stratizen</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script type="module" src="/firebase.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f9f9f9;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .new-listing, .listing {
+      background: white;
+      padding: 1.2rem;
+      margin-bottom: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 0.8rem;
+      margin: 0.5rem 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      padding: 0.6rem 1.2rem;
+      background: #111;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .listing h3 {
+      margin: 0;
+    }
+
+    .listing small {
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🛍️ Stratizen Marketplace</h1>
+
+    <div class="new-listing">
+      <h2>Post a new item</h2>
+      <input type="text" id="item-title" placeholder="Item name (e.g. Used Laptop)" />
+      <textarea id="item-desc" rows="3" placeholder="Description..."></textarea>
+      <input type="number" id="item-price" placeholder="Price (KES)" />
+      <button id="post-listing">Post Item</button>
+    </div>
+
+    <div id="market-listings">
+      <h2>🛒 Listings</h2>
+      <!-- Items will be added here -->
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './firebase.js';
+    import {
+      collection, addDoc, query, orderBy, onSnapshot,
+      serverTimestamp
+    } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+
+    const titleInput = document.getElementById('item-title');
+    const descInput = document.getElementById('item-desc');
+    const priceInput = document.getElementById('item-price');
+    const postBtn = document.getElementById('post-listing');
+    const listingsDiv = document.getElementById('market-listings');
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        window.location.href = "login.html";
+      } else {
+        currentUser = user;
+        loadListings();
+      }
+    });
+
+    postBtn.addEventListener('click', async () => {
+      const title = titleInput.value.trim();
+      const description = descInput.value.trim();
+      const price = parseFloat(priceInput.value.trim());
+
+      if (!title || !description || isNaN(price)) {
+        alert("Please fill in all fields with valid values.");
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "marketplace"), {
+          title,
+          description,
+          price,
+          sellerId: currentUser.uid,
+          sellerName: currentUser.displayName || "Anonymous",
+          createdAt: serverTimestamp()
+        });
+
+        titleInput.value = '';
+        descInput.value = '';
+        priceInput.value = '';
+      } catch (err) {
+        alert("Error posting item: " + err.message);
+      }
+    });
+
+    function loadListings() {
+      const q = query(collection(db, "marketplace"), orderBy("createdAt", "desc"));
+      onSnapshot(q, snapshot => {
+        listingsDiv.innerHTML = "<h2>🛒 Listings</h2>";
+        snapshot.forEach(doc => {
+          const item = doc.data();
+          const div = document.createElement("div");
+          div.classList.add("listing");
+          div.innerHTML = `
+            <h3>${item.title}</h3>
+            <p>${item.description}</p>
+            <strong>KES ${item.price.toLocaleString()}</strong><br>
+            <small>Posted by ${item.sellerName || "Unknown"} - ${item.createdAt?.toDate().toLocaleString() || 'Now'}</small>
+          `;
+          listingsDiv.appendChild(div);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
+

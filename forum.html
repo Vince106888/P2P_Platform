@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Forum - Stratizen</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script type="module" src="/firebase.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8f8f8;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .new-thread {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      margin-bottom: 2rem;
+    }
+
+    .new-thread input, .new-thread textarea {
+      width: 100%;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .new-thread button {
+      padding: 0.6rem 1.2rem;
+      background: #111;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .threads .thread {
+      background: white;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    .threads .thread h3 {
+      margin: 0 0 0.5rem;
+    }
+
+    .threads .thread a {
+      text-decoration: none;
+      color: #222;
+    }
+
+    .threads .thread a:hover {
+      text-decoration: underline;
+    }
+
+    .threads .thread small {
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📣 Stratizen Forum</h1>
+
+    <div class="new-thread">
+      <h2>Start a new thread</h2>
+      <input type="text" id="thread-title" placeholder="Title (e.g. Need help with Python)"/>
+      <textarea id="thread-content" rows="4" placeholder="Describe your question or topic..."></textarea>
+      <button id="post-thread">Post Thread</button>
+    </div>
+
+    <div class="threads" id="threads">
+      <h2>🧵 Latest Threads</h2>
+      <!-- Threads will appear here -->
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './firebase.js';
+    import {
+      collection, addDoc, serverTimestamp, query,
+      orderBy, onSnapshot
+    } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+
+    const titleInput = document.getElementById('thread-title');
+    const contentInput = document.getElementById('thread-content');
+    const postButton = document.getElementById('post-thread');
+    const threadsContainer = document.getElementById('threads');
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        window.location.href = "login.html";
+      } else {
+        currentUser = user;
+        loadThreads();
+      }
+    });
+
+    postButton.addEventListener('click', async () => {
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
+
+      if (!title || !content) {
+        alert("Please enter both title and content.");
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "forumThreads"), {
+          title,
+          content,
+          authorId: currentUser.uid,
+          authorName: currentUser.displayName || "Anonymous",
+          createdAt: serverTimestamp()
+        });
+
+        titleInput.value = '';
+        contentInput.value = '';
+      } catch (err) {
+        alert("Failed to post: " + err.message);
+      }
+    });
+
+    function loadThreads() {
+      const q = query(collection(db, "forumThreads"), orderBy("createdAt", "desc"));
+      onSnapshot(q, (snapshot) => {
+        threadsContainer.innerHTML = "<h2>🧵 Latest Threads</h2>";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement('div');
+          div.classList.add('thread');
+          div.innerHTML = `
+            <h3><a href="thread.html?id=${doc.id}">${data.title}</a></h3>
+            <p>${data.content.substring(0, 100)}...</p>
+            <small>by ${data.authorName || 'Anon'} - ${data.createdAt?.toDate().toLocaleString() || 'Just now'}</small>
+          `;
+          threadsContainer.appendChild(div);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

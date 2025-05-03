@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Messages | Stratizen</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h2>Messages</h2>
+  <div id="chat-container">
+    <div id="inbox">
+      <h3>Inbox</h3>
+      <ul id="conversation-list"></ul>
+    </div>
+    <div id="chat-box">
+      <h3 id="chat-with">Chat</h3>
+      <div id="messages"></div>
+      <input type="text" id="message-input" placeholder="Type your message">
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+    import { firebaseConfig } from './firebaseConfig.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser;
+    let currentRecipient = null;
+
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const messagesDiv = document.getElementById('messages');
+    const conversationList = document.getElementById('conversation-list');
+    const chatWith = document.getElementById('chat-with');
+
+    onAuthStateChanged(auth, async user => {
+      if (user) {
+        currentUser = user.uid;
+        loadInbox();
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+
+    async function loadInbox() {
+      const q = query(collection(db, "messages", currentUser, "conversations"));
+      const snapshot = await getDocs(q);
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const li = document.createElement('li');
+        li.textContent = data.name;
+        li.addEventListener('click', () => openChat(data.uid, data.name));
+        conversationList.appendChild(li);
+      });
+    }
+
+    function openChat(recipientId, name) {
+      currentRecipient = recipientId;
+      chatWith.textContent = `Chat with ${name}`;
+      messagesDiv.innerHTML = "";
+
+      const messagesRef = collection(db, "conversations", getConvoId(currentUser, recipientId), "messages");
+      const q = query(messagesRef, orderBy("timestamp"));
+      onSnapshot(q, snapshot => {
+        messagesDiv.innerHTML = "";
+        snapshot.forEach(doc => {
+          const msg = doc.data();
+          const p = document.createElement('p');
+          p.textContent = `${msg.sender === currentUser ? "You" : name}: ${msg.text}`;
+          messagesDiv.appendChild(p);
+        });
+      });
+    }
+
+    sendBtn.addEventListener('click', async () => {
+      const text = messageInput.value.trim();
+      if (!text || !currentRecipient) return;
+
+      const convoId = getConvoId(currentUser, currentRecipient);
+      const msgRef = collection(db, "conversations", convoId, "messages");
+      await addDoc(msgRef, {
+        text,
+        sender: currentUser,
+        timestamp: new Date()
+      });
+
+      messageInput.value = '';
+    });
+
+    function getConvoId(a, b) {
+      return a < b ? `${a}_${b}` : `${b}_${a}`;
+    }
+  </script>
+</body>
+</html>
