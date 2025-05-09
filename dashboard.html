@@ -1,51 +1,168 @@
-<!-- dashboard.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard | Stratizen</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background-color: #f7f9fc;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
     }
-    .container {
-      max-width: 600px;
-      margin: auto;
-      background-color: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+
+    header {
+      background-color: #2e7d32;
+      color: white;
+      padding: 20px;
       text-align: center;
     }
-    h1 {
+
+    nav ul {
+      display: flex;
+      justify-content: center;
+      list-style: none;
+      padding: 0;
+      gap: 20px;
+      margin-top: 10px;
+    }
+
+    nav ul li a {
+      color: white;
+      text-decoration: none;
+      background-color: #388e3c;
+      padding: 10px 15px;
+      border-radius: 6px;
+      transition: background 0.3s ease;
+    }
+
+    nav ul li a:hover {
+      background-color: #66bb6a;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 30px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .profile-header img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .profile-details h2 {
+      margin: 0;
       color: #333;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      border: none;
-      background-color: #ff5252;
-      color: white;
-      border-radius: 8px;
-      cursor: pointer;
+
+    .profile-details p {
+      margin: 4px 0;
+      color: #666;
+      font-size: 15px;
     }
-    button:hover {
-      background-color: #e84141;
+
+    .stats {
+      margin-top: 30px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .stat-box {
+      flex: 1;
+      background-color: #e8f5e9;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .stat-box h3 {
+      margin-bottom: 10px;
+      color: #2e7d32;
+    }
+
+    footer {
+      margin-top: 40px;
+      background-color: #333;
+      color: white;
+      text-align: center;
+      padding: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .profile-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      nav ul {
+        flex-direction: column;
+        align-items: center;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Welcome to Your Dashboard!</h1>
-    <p>You are successfully logged in.</p>
-    <button onclick="logOut()">Log Out</button>
-  </div>
+  <header>
+    <h1>Welcome to Your Stratizen Dashboard</h1>
+    <nav>
+      <ul>
+        <li><a href="profile.html">Profile</a></li>
+        <li><a href="forum.html">Forum</a></li>
+        <li><a href="messages.html">Messages</a></li>
+        <li><a href="marketplace.html">Marketplace</a></li>
+        <li><a href="logout.html">Logout</a></li>
+      </ul>
+    </nav>
+  </header>
 
-  <!-- Firebase + Logout Script -->
+  <main>
+    <div class="profile-header">
+      <img id="profile-pic" src="https://via.placeholder.com/80" alt="Profile Picture" />
+      <div class="profile-details">
+        <h2 id="username">Loading...</h2>
+        <p id="bio"></p>
+        <p id="purpose" style="font-style: italic;"></p>
+      </div>
+    </div>
+
+    <section class="stats">
+      <div class="stat-box">
+        <h3>Total Messages</h3>
+        <p id="message-count">0</p>
+      </div>
+      <div class="stat-box">
+        <h3>Forum Posts</h3>
+        <p id="forum-posts">0</p>
+      </div>
+      <div class="stat-box">
+        <h3>Items for Sale</h3>
+        <p id="items-for-sale">0</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Stratizen. All rights reserved.</p>
+  </footer>
+
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getFirestore, doc, collection, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAOybEgXfQX_tJx5dqg_OGzcrPcGBKq2gg",
@@ -58,16 +175,53 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    window.logOut = async function () {
-      try {
-        await signOut(auth);
-        alert("Logged out successfully.");
-        window.location.href = "auth.html";
-      } catch (error) {
-        alert("Logout failed: " + error.message);
+    const usernameEl = document.getElementById('username');
+    const bioEl = document.getElementById('bio');
+    const purposeEl = document.getElementById('purpose');
+    const profilePicEl = document.getElementById('profile-pic');
+
+    const messageCountEl = document.getElementById('message-count');
+    const forumPostsEl = document.getElementById('forum-posts');
+    const itemsForSaleEl = document.getElementById('items-for-sale');
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "login.html";
+        return;
       }
-    };
+
+      try {
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          usernameEl.textContent = userData.username || "User";
+          bioEl.textContent = userData.bio || "";
+          purposeEl.textContent = userData.purpose || "";
+          profilePicEl.src = userData.profilePic || "https://via.placeholder.com/80";
+        }
+
+        const messagesRef = collection(db, "messages", user.uid, "conversations");
+        const forumRef = collection(db, "forum", user.uid, "posts");
+        const marketplaceRef = collection(db, "marketplace", user.uid, "items");
+
+        const [messagesSnap, forumSnap, marketplaceSnap] = await Promise.all([
+          getDocs(messagesRef),
+          getDocs(forumRef),
+          getDocs(marketplaceRef)
+        ]);
+
+        messageCountEl.textContent = messagesSnap.size;
+        forumPostsEl.textContent = forumSnap.size;
+        itemsForSaleEl.textContent = marketplaceSnap.size;
+      } catch (error) {
+        console.error("Error loading dashboard:", error);
+        usernameEl.textContent = "Error loading user";
+      }
+    });
   </script>
 </body>
 </html>

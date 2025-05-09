@@ -1,62 +1,152 @@
-<!-- profile.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Your Profile</title>
+  <meta charset="UTF-8">
+  <title>User Profile</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f3f6f9;
+      background-color: #eef2f5;
       padding: 40px;
     }
+
     .container {
-      max-width: 600px;
+      max-width: 700px;
       margin: auto;
       background: white;
       padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.08);
     }
-    textarea {
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    input, textarea, select {
       width: 100%;
-      height: 100px;
+      padding: 12px;
       margin-top: 10px;
-      padding: 10px;
+      margin-bottom: 20px;
       border: 1px solid #ccc;
-      border-radius: 6px;
+      border-radius: 8px;
+      box-sizing: border-box;
     }
+
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+    }
+
     button {
-      margin-top: 20px;
-      padding: 10px 20px;
       background: #007bff;
       color: white;
+      padding: 12px 24px;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
     }
+
     button:hover {
       background: #0056b3;
     }
+
     .message {
-      margin-top: 20px;
+      margin-top: 15px;
       color: green;
+    }
+
+    .error {
+      margin-top: 15px;
+      color: red;
+    }
+
+    .loading {
+      display: none;
+      color: #007bff;
+      margin-top: 10px;
+    }
+
+    .loading.show {
+      display: block;
+    }
+
+    .profile-pic {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Your Purpose / Current Problem</h2>
-    <p>This helps us tailor your experience. You can change it later.</p>
-    <textarea id="purpose-input" placeholder="Write your purpose or what you're currently struggling with..."></textarea>
-    <button onclick="savePurpose()">Save</button>
-    <p class="message" id="save-message"></p>
+    <h2>Edit Your Profile</h2>
+
+    <img id="preview-img" class="profile-pic" src="https://via.placeholder.com/100" alt="Profile Picture">
+
+    <label for="profile-pic">Upload Profile Picture</label>
+    <input type="file" id="profile-pic" accept="image/*" />
+
+    <label for="full-name">Full Name</label>
+    <input type="text" id="full-name" placeholder="Jane Doe" />
+
+    <label for="username">Username</label>
+    <input type="text" id="username" placeholder="e.g. janedoe99" />
+
+    <label for="bio">Bio</label>
+    <textarea id="bio" placeholder="A short description about you..."></textarea>
+
+    <label for="purpose">What problem are you solving?</label>
+    <textarea id="purpose" placeholder="Your personal mission or challenge..."></textarea>
+
+    <label for="school">School</label>
+    <input type="text" id="school" placeholder="Strathmore University" />
+
+    <label for="program">Program</label>
+    <input type="text" id="program" placeholder="BSc Computer Science" />
+
+    <label for="year">Year</label>
+    <select id="year">
+      <option value="">Select year</option>
+      <option>1</option>
+      <option>2</option>
+      <option>3</option>
+      <option>4</option>
+      <option>Postgraduate</option>
+    </select>
+
+    <label for="skills">Skills</label>
+    <input type="text" id="skills" placeholder="e.g. Web Dev, Python, Cybersecurity" />
+
+    <label for="linkedin">LinkedIn</label>
+    <input type="text" id="linkedin" placeholder="https://linkedin.com/in/yourname" />
+
+    <label for="github">GitHub</label>
+    <input type="text" id="github" placeholder="https://github.com/yourusername" />
+
+    <label for="website">Website</label>
+    <input type="text" id="website" placeholder="https://yourportfolio.com" />
+
+    <button id="save-btn">Save Profile</button>
+    <p class="loading" id="loading-message">Saving...</p>
+    <p class="message" id="success-message"></p>
+    <p class="error" id="error-message"></p>
   </div>
 
-  <!-- Firebase Setup -->
+  <!-- Firebase Integration -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAOybEgXfQX_tJx5dqg_OGzcrPcGBKq2gg",
@@ -71,29 +161,100 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    let currentUser = null;
+    const fields = {
+      fullName: document.getElementById("full-name"),
+      username: document.getElementById("username"),
+      bio: document.getElementById("bio"),
+      purpose: document.getElementById("purpose"),
+      school: document.getElementById("school"),
+      program: document.getElementById("program"),
+      year: document.getElementById("year"),
+      skills: document.getElementById("skills"),
+      linkedin: document.getElementById("linkedin"),
+      github: document.getElementById("github"),
+      website: document.getElementById("website"),
+      profilePicInput: document.getElementById("profile-pic"),
+      previewImg: document.getElementById("preview-img"),
+      saveBtn: document.getElementById("save-btn"),
+      successMessage: document.getElementById("success-message"),
+      errorMessage: document.getElementById("error-message"),
+      loadingMessage: document.getElementById("loading-message"),
+    };
+
+    let currentUser;
+
+    // Live preview for profile picture
+    fields.profilePicInput.addEventListener("change", () => {
+      const file = fields.profilePicInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          fields.previewImg.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUser = user;
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          for (const key in fields) {
+            if (fields[key] && data[key]) {
+              if (key === "previewImg") {
+                fields.previewImg.src = data.profilePicture || fields.previewImg.src;
+              } else if (fields[key].tagName === "INPUT" || fields[key].tagName === "TEXTAREA" || fields[key].tagName === "SELECT") {
+                fields[key].value = data[key] || "";
+              }
+            }
+          }
+        }
       } else {
-        window.location.href = 'auth.html';
+        window.location.href = "auth.html";
       }
     });
 
-    window.savePurpose = async function () {
-      const purposeText = document.getElementById('purpose-input').value;
-      if (!purposeText || !currentUser) return;
+    fields.saveBtn.addEventListener("click", async () => {
+      fields.successMessage.textContent = "";
+      fields.errorMessage.textContent = "";
+
+      const profileData = {
+        fullName: fields.fullName.value.trim(),
+        username: fields.username.value.trim(),
+        bio: fields.bio.value.trim(),
+        purpose: fields.purpose.value.trim(),
+        school: fields.school.value.trim(),
+        program: fields.program.value.trim(),
+        year: fields.year.value,
+        skills: fields.skills.value.trim(),
+        linkedin: fields.linkedin.value.trim(),
+        github: fields.github.value.trim(),
+        website: fields.website.value.trim(),
+        profilePicture: fields.previewImg.src,
+        updatedAt: serverTimestamp(),
+      };
+
+      // Simple validation
+      if (!profileData.fullName || !profileData.username || !profileData.purpose) {
+        fields.errorMessage.textContent = "Please fill out all required fields.";
+        return;
+      }
+
+      fields.loadingMessage.classList.add("show");
 
       try {
-        const userDoc = doc(db, "users", currentUser.uid);
-        await setDoc(userDoc, { purpose: purposeText }, { merge: true });
-        document.getElementById("save-message").textContent = "Saved successfully!";
+        const userRef = doc(db, "users", currentUser.uid);
+        await setDoc(userRef, { ...profileData, createdAt: serverTimestamp() }, { merge: true });
+        fields.successMessage.textContent = "Profile saved successfully!";
       } catch (error) {
-        console.error("Error saving purpose:", error);
-        document.getElementById("save-message").textContent = "Failed to save.";
+        fields.errorMessage.textContent = "Error saving profile: " + error.message;
+      } finally {
+        fields.loadingMessage.classList.remove("show");
       }
-    };
+    });
   </script>
 </body>
 </html>

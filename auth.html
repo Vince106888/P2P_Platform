@@ -1,114 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Login / Signup</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f2f2f2;
-      padding: 40px;
-    }
-    .container {
-      max-width: 400px;
-      margin: auto;
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    input {
-      display: block;
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      font-size: 16px;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      background-color: #4CAF50;
-      color: white;
-      font-size: 16px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    h2 {
-      text-align: center;
-    }
-    #message {
-      text-align: center;
-      margin-top: 10px;
-      color: red;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Login / Signup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        input {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper span {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        #message {
+            text-align: center;
+            margin-top: 10px;
+            color: red;
+        }
+
+        .loading {
+            font-size: 16px;
+            color: green;
+            text-align: center;
+        }
+    </style>
 </head>
+
 <body>
-  <div class="container">
-    <h2>Sign Up</h2>
-    <input type="email" id="signup-email" placeholder="Email" />
-    <input type="password" id="signup-password" placeholder="Password" />
-    <button onclick="signUp()">Sign Up</button>
+    <div class="container">
+        <h2>Sign Up</h2>
+        <input type="email" id="signup-email" placeholder="Email" />
+        <div class="password-wrapper">
+            <input type="password" id="signup-password" placeholder="Password" />
+            <span onclick="togglePassword('signup-password', this)">👁️</span>
+        </div>
+        <button onclick="signUp()">Sign Up</button>
 
-    <h2>Login</h2>
-    <input type="email" id="login-email" placeholder="Email" />
-    <input type="password" id="login-password" placeholder="Password" />
-    <button onclick="logIn()">Login</button>
+        <h2>Login</h2>
+        <input type="email" id="login-email" placeholder="Email" />
+        <div class="password-wrapper">
+            <input type="password" id="login-password" placeholder="Password" />
+            <span onclick="togglePassword('login-password', this)">👁️</span>
+        </div>
+        <button onclick="logIn()">Login</button>
 
-    <p id="message"></p>
-  </div>
+        <p id="message"></p>
+        <p id="loading" class="loading" style="display:none;">Loading...</p>
+    </div>
 
-  <!-- Firebase SDK as ES modules -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    <!-- Firebase SDK as ES modules -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAOybEgXfQX_tJx5dqg_OGzcrPcGBKq2gg",
-      authDomain: "p2p-student-platform.firebaseapp.com",
-      projectId: "p2p-student-platform",
-      storageBucket: "p2p-student-platform.appspot.com",
-      messagingSenderId: "23452791627",
-      appId: "1:23452791627:web:de87fcbd0ba47949b9aece"
-    };
+        // Firebase configuration object
+        const firebaseConfig = {
+            apiKey: "AIzaSyAOybEgXfQX_tJx5dqg_OGzcrPcGBKq2gg",
+            authDomain: "p2p-student-platform.firebaseapp.com",
+            projectId: "p2p-student-platform",
+            storageBucket: "p2p-student-platform.appspot.com",
+            messagingSenderId: "23452791627",
+            appId: "1:23452791627:web:de87fcbd0ba47949b9aece"
+        };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-    window.signUp = async function () {
-      const email = document.getElementById('signup-email').value;
-      const password = document.getElementById('signup-password').value;
+        // Sign Up function
+        window.signUp = async function () {
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
 
-      try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        document.getElementById("message").innerText = "Sign up successful! Redirecting...";
-        setTimeout(() => {
-          window.location.href = "dashboard.html";
-        }, 1500);
-      } catch (error) {
-        document.getElementById("message").innerText = "Signup failed: " + error.message;
-      }
-    };
+            // Simple validation
+            if (!email || !password) {
+                document.getElementById("message").innerText = "Email and Password are required!";
+                return;
+            }
 
-    window.logIn = async function () {
-      const email = document.getElementById('login-email').value;
-      const password = document.getElementById('login-password').value;
+            try {
+                document.getElementById("loading").style.display = "block"; // Show loading message
+                await createUserWithEmailAndPassword(auth, email, password);
+                document.getElementById("message").innerText = "Sign up successful! Redirecting...";
+                setTimeout(() => {
+                    window.location.href = "profile.html"; // Redirect to profile creation
+                }, 1500);
+            } catch (error) {
+                document.getElementById("message").innerText = "Signup failed: " + error.message;
+            } finally {
+                document.getElementById("loading").style.display = "none"; // Hide loading message
+            }
+        };
 
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        document.getElementById("message").innerText = "Login successful! Redirecting...";
-        setTimeout(() => {
-          window.location.href = "dashboard.html";
-        }, 1500);
-      } catch (error) {
-        document.getElementById("message").innerText = "Login failed: " + error.message;
-      }
-    };
-  </script>
+        // Login function
+        window.logIn = async function () {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            // Simple validation
+            if (!email || !password) {
+                document.getElementById("message").innerText = "Email and Password are required!";
+                return;
+            }
+
+            try {
+                document.getElementById("loading").style.display = "block"; // Show loading message
+                await signInWithEmailAndPassword(auth, email, password);
+                document.getElementById("message").innerText = "Login successful! Redirecting...";
+                setTimeout(() => {
+                    window.location.href = "dashboard.html"; // Redirect to dashboard
+                }, 1500);
+            } catch (error) {
+                document.getElementById("message").innerText = "Login failed: " + error.message;
+            } finally {
+                document.getElementById("loading").style.display = "none"; // Hide loading message
+            }
+        };
+
+        // Toggle password visibility
+        window.togglePassword = function (fieldId, icon) {
+            const field = document.getElementById(fieldId);
+            if (field.type === "password") {
+                field.type = "text";
+                icon.textContent = "🙈";
+            } else {
+                field.type = "password";
+                icon.textContent = "👁️";
+            }
+        };
+
+        // Check if user is authenticated
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                const userData = userDocSnap.exists() ? userDocSnap.data() : null;
+
+                if (userData && userData.profileComplete) {
+                    window.location.href = "dashboard.html"; // Redirect to dashboard
+                } else {
+                    window.location.href = "profile.html"; // Redirect to profile creation
+                }
+            }
+        });
+    </script>
 </body>
-</html>
 
+</html>
